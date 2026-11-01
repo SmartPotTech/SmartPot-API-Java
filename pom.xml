@@ -52,6 +52,9 @@
              Quitar cuando Spring Boot gestione estas versiones o superiores. -->
         <jackson-bom.version>3.1.8</jackson-bom.version>
         <jackson-2-bom.version>2.21.8</jackson-2-bom.version>
+        <!-- Logback 1.6.5 corrige un recorrido de directorios en logback-classic (Spring Boot 4.1.2 trae 1.5.38).
+             Quitar cuando Spring Boot gestione esta versión o una superior. -->
+        <logback.version>1.6.5</logback.version>
     </properties>
 
     <dependencies>
