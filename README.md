@@ -197,17 +197,28 @@ elimina. Máximo 5 por cuenta. Al arrancar, `CropKindBackfill` completa el tipo 
 
 ## Guía de Instalación
 
+### Despliegue en un comando
+
+La imagen es pública: `ghcr.io/smartpottech/smartpot-api`. La plataforma completa, con este servicio incluido, se
+levanta con un solo comando y sin descargar el código:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SmartPotTech/.github/main/docker/demo/compose.yaml | docker compose -f - up -d --wait
+```
+
+Abre http://localhost:5173 e ingresa con `demo@smartpot.app` / `SmartPot2026`. Se detiene con
+`docker compose -p smartpot-demo down` (con `-v` borra también los datos). Más detalle en la
+[demo](https://github.com/SmartPotTech/.github/tree/main/docker/demo).
+
 ### Requisitos Previos
 
 - Java 21 y Maven 3.9 (o solo Docker)
 - MongoDB, Redis, Mailpit, el broker y el servicio de IA: el entorno completo está
   en [SmartPotTech/.github](https://github.com/SmartPotTech/.github)
 
-### Ejecución local
+### Desarrollo
 
 ```bash
-git clone https://github.com/SmartPotTech/SmartPot-API.git
-cd SmartPot-API
 cp .env.example .env    # completa secretos y conexiones
 ./mvnw spring-boot:run
 ```
