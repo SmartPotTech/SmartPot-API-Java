@@ -65,6 +65,9 @@ public class SecurityConfiguration {
         RateLimitingFilter rateLimitingFilter = new RateLimitingFilter(cacheStore, errorWriter, clock, properties);
 
         return http
+                // Sin CSRF a propósito: la API es sin estado y solo acepta el JWT en la cabecera Authorization; no usa
+                // cookies de sesión ni CORS con credenciales, así que un sitio ajeno no puede hacer que el navegador
+                // envíe la credencial por su cuenta. Si algún día la sesión pasa a una cookie, hay que activarlo.
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfig))
                 .httpBasic(AbstractHttpConfigurer::disable)
