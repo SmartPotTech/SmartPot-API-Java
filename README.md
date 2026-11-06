@@ -1,10 +1,15 @@
-# SmartPot-API
+# SmartPot-API-Java (Deprecated / Deprecado)
+
+> [!WARNING]
+> **Deprecated / Deprecado (Legacy Stack A)**  
+> **English:** This repository contains the legacy Stack A (v1.0) REST API and MQTT bridge implemented in Java 21 and Spring Boot 4.1. It has been **deprecated and superseded in production** by the canonical modern Stack B API: [**`SmartPot-API`**](https://github.com/SmartPotTech/SmartPot-API) (Go 1.26 + Echo). This repository is preserved solely for historical reference and software archaeology.  
+> **Español:** Este repositorio contiene la implementación legada del Stack A (v1.0) de la API REST y puente MQTT desarrollada en Java 21 y Spring Boot 4.1. Ha sido **deprecada y sustituida en producción** por la API canónica moderna del Stack B: [**`SmartPot-API`**](https://github.com/SmartPotTech/SmartPot-API) (Go 1.26 + Echo). Este repositorio se conserva exclusivamente como referencia histórica y arqueología de software.
 
 ## Estado del Proyecto
 
-[![Java CI with Maven](https://github.com/SmartPotTech/SmartPot-API/actions/workflows/maven.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API/actions/workflows/maven.yml)
-[![CodeQL Advanced](https://github.com/SmartPotTech/SmartPot-API/actions/workflows/codeql.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API/actions/workflows/codeql.yml)
-[![Publish Docker Images](https://github.com/SmartPotTech/SmartPot-API/actions/workflows/packaging.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API/actions/workflows/packaging.yml)
+[![Java CI with Maven](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/maven.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/maven.yml)
+[![CodeQL Advanced](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/codeql.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/codeql.yml)
+[![Publish Docker Images](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/packaging.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/packaging.yml)
 
 ## Descripción
 

@@ -10,7 +10,10 @@ equipo: SmartPotTech
 proyecto: smartpot.app
 -->
 
-# SmartPot-API
+# SmartPot-API-Java (Deprecado)
+
+> [!WARNING]
+> **Componente Legado (Stack A)**: Este componente ha sido reemplazado en producción por la API canónica en Go ([`SmartPot-API`](https://github.com/SmartPotTech/SmartPot-API)). Este documento describe la implementación original en Spring Boot 4.1 y Java 21 como registro histórico.
 
 ## Ficha del documento
 
