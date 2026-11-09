@@ -1,335 +1,249 @@
 <!-- portada
-eyebrow: Documentación del componente
-titulo: SmartPot-API
+eyebrow: Component Technical Documentation
+titulo: SmartPot-API-Java (Legacy Stack A)
 acento: API
-subtitulo: El centro de la plataforma SmartPot
-bajada: REST con JWT, puente MQTT con el broker, cultivos reales y virtuales, agente de automatización con el asistente de IA, canales de notificación, seguridad, configuración y operación de la API.
-documento: SmartPot-API
-version: 1.1 · octubre 2026
+subtitulo: Legacy Spring Boot Core API and MQTT Bridge
+bajada: REST with JWT, MQTT broker bridge, physical and virtual crops, AI automation agent, notification channels, security, configuration, and operations of the legacy Stack A API.
+documento: SmartPot-API-Java Documentation
+version: 1.1 · October 2026
 equipo: SmartPotTech
 proyecto: smartpot.app
 -->
 
-# SmartPot-API-Java (Deprecado)
+# SmartPot-API-Java (Legacy Stack A)
 
 > [!WARNING]
-> **Componente Legado (Stack A)**: Este componente ha sido reemplazado en producción por la API canónica en Go ([`SmartPot-API`](https://github.com/SmartPotTech/SmartPot-API)). Este documento describe la implementación original en Spring Boot 4.1 y Java 21 como registro histórico.
+> **Legacy Component (Stack A)**: This service has been superseded in production by the canonical Go API ([`SmartPot-API`](https://github.com/SmartPotTech/SmartPot-API)). This document preserves the historical architecture and implementation details of the original Spring Boot 4.1 and Java 21 service.
 
-## Ficha del documento
+## Document Summary
 
-| Campo                          | Valor                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Field                          | Value                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 |--------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Proyecto                       | SmartPot · [smartpot.app](https://smartpot.app)                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Componente                     | [SmartPot-API](https://github.com/SmartPotTech/SmartPot-API)                                                                                                                                                                                                                                                                                                                                                                                            |
-| Versión                        | 1.1 · octubre 2026                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Alcance                        | Dominios de la API, cultivos reales y virtuales, flujo de lecturas y comandos, seguridad, configuración, pruebas y operación                                                                                                                                                                                                                                                                                                                            |
-| Documentación de la plataforma | [Documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md), [recorrido del proyecto](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Project_Journey.md), [ciclo de vida](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Software_Lifecycle.md) y [diagramas generales](https://github.com/SmartPotTech/.github/blob/main/docs/README.md#diagramas-generales) |
-| Mantenimiento                  | Se genera desde `docs/` de este repositorio con las herramientas de `.github/docs/tools`; se actualiza con cada cambio del componente                                                                                                                                                                                                                                                                                                                   |
+| Project                       | SmartPot · [smartpot.app](https://smartpot.app)                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Component                     | [SmartPot-API](https://github.com/SmartPotTech/SmartPot-API)                                                                                                                                                                                                                                                                                                                                                                                            |
+| Version                       | 1.1 · octubre 2026                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Scope                        | API domains, physical and virtual crops, telemetry and command flow, security, configuration, testing, and operations                                                                                                                                                                                                                                                                                                                            |
+| Platform Documentation | [Technical Documentation](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md), [Project Journey](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Project_Journey.md), [Software Lifecycle](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Software_Lifecycle.md), and [Global Diagrams](https://github.com/SmartPotTech/.github/blob/main/docs/README.md#global-diagrams) |
+| Maintenance                  | Generated from `docs/` in this repository via `.github/docs/tools`; updated with every component change                                                                                                                                                                                                                                                                                                                   |
 
-<!-- parte: PARTE I | El componente -->
+<!-- parte: PART I | Component Overview -->
 
-## 1. Propósito
+## 1. Purpose
 
-### En palabras simples
+### In Plain Terms
 
-La API es la única puerta de SmartPot. La PWA le habla por HTTPS; los dispositivos de los cultivos, por MQTT a través
-del broker. La API guarda las lecturas, le pregunta al asistente de IA cómo va cada cultivo, manda las órdenes a los
-actuadores, administra las cuentas MQTT de cada cultivo y avisa por la PWA y por Telegram. Todo lo que ve una persona
-pasa por aquí, siempre con su sesión y solo sobre sus propios cultivos.
+The API serves as the primary gateway of SmartPot. The PWA communicates via HTTPS; crop devices communicate via MQTT through the broker. The API stores telemetry readings, queries the AI assistant for agronomic health evaluations, dispatches actuation commands, provisions per-crop MQTT credentials, and delivers alerts through the PWA and Telegram. All user interactions route through this layer, scoped strictly to authenticated tenant accounts.
 
-| Responsabilidad  | Cómo                                                                                                                                                             |
+| Responsibility  | Mechanism                                                                                                                                                             |
 |------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Cuentas y sesión | Registro, ingreso con JWT, recuperación de contraseña por correo, perfil y borrado de la cuenta                                                                  |
-| Cultivos         | Reales o virtuales (se elige al crear y no cambia), seis especies, cuatro formas, su lugar con el clima de afuera y modo automático                              |
-| Dispositivos     | Cuenta MQTT por cultivo con clave de 192 bits cifrada con AES-256-GCM; aprovisionamiento en Mosquitto                                                            |
-| Lecturas         | Telemetría MQTT validada contra el rango físico de cada sensor, historial, resumen y CSV                                                                         |
-| Órdenes          | Actuadores como switches (409 si la orden no cambia nada o se cruza con otra), comandos con QoS 1, confirmación del dispositivo, vencimiento y órdenes en bloque |
-| Asistente        | Evaluación con SmartPot-AI, agente de automatización y envío de lecturas reales para el aprendizaje                                                              |
-| Simulación       | Configuración de los cultivos virtuales y proxy al simulador interno                                                                                             |
-| Avisos           | Notificaciones en la PWA y en Telegram, con canales intercambiables, avisos por cultivo, resúmenes y chats compartidos                                           |
+| Accounts & Auth | Registration, JWT login, email password recovery, user profile, and cascaded account deletion                                                                  |
+| Crops         | Physical or virtual (immutable once created), 6 species profiles, 4 system forms, live weather location, and automatic mode                              |
+| Devices     | Per-crop MQTT tenant account with 192-bit AES-256-GCM encrypted credentials; Mosquitto dynamic provisioning                                                            |
+| Telemetry         | MQTT telemetry validated against physical sensor bounds, historical series, digest recap, and CSV export                                                                         |
+| Commands          | Actuators operated as switches (409 Conflict if redundant or pending), QoS 1 commands, device ACK, expiration ticker, and bulk orders |
+| AI Assistant        | Evaluation with SmartPot-AI-Python, automation reactive agent, and real-crop telemetry pipeline for continuous learning                                                              |
+| Simulation       | Virtual crop parameters and internal proxy to SmartPot-DataGenerator-Python                                                                                             |
+| Alerts           | PWA and Telegram alerts, pluggable notification channels, per-crop subscriptions, daily digests, and shared collaborator chats                                           |
 
-## 2. Arquitectura del componente
+## 2. Component Architecture
 
-Cada dominio sigue las mismas capas (`controller`, `service`, `repository`, `mapper` y `model`). Los dominios se hablan
-con servicios y eventos de Spring (`ReadingRecordedEvent`, `CropDeletedEvent`, `DeviceKeyRotatedEvent`,
-`NotificationCreatedEvent`), así un cambio en uno no arrastra a los demás.
+Each domain follows a layered architecture (`controller`, `service`, `repository`, `mapper`, and `model`). Domains interact via service interfaces and internal Spring ApplicationEvents (`ReadingRecordedEvent`, `CropDeletedEvent`, `DeviceKeyRotatedEvent`, `NotificationCreatedEvent`), isolating domain concerns.
 
-<!-- diagrama: SmartPot_API_Global_Component | titulo=SmartPot-API por dentro | lamina=H -->
+<!-- diagrama: SmartPot_API_Global_Component | titulo=SmartPot-API Internal Architecture | lamina=H -->
 
 ```mermaid
 %%{init: {"theme": "base", "fontFamily": "Segoe UI, Arial, sans-serif", "themeVariables": {"fontFamily": "Segoe UI, Arial, sans-serif", "fontSize": "15px", "primaryColor": "#DDF5EA", "primaryTextColor": "#17261F", "primaryBorderColor": "#067A52", "secondaryColor": "#E3F2FB", "secondaryTextColor": "#17261F", "secondaryBorderColor": "#1F6FA0", "tertiaryColor": "#F2F7F4", "tertiaryTextColor": "#17261F", "tertiaryBorderColor": "#D5E3DC", "lineColor": "#5B6B63", "textColor": "#17261F", "mainBkg": "#DDF5EA", "nodeBorder": "#067A52", "clusterBkg": "#F7FAF8", "clusterBorder": "#D5E3DC", "edgeLabelBackground": "#FFFFFF", "actorBkg": "#067A52", "actorBorder": "#0B3D2B", "actorTextColor": "#FFFFFF", "actorLineColor": "#5B6B63", "signalColor": "#17261F", "signalTextColor": "#17261F", "labelBoxBkgColor": "#0B3D2B", "labelBoxBorderColor": "#0B3D2B", "labelTextColor": "#FFFFFF", "loopTextColor": "#0B3D2B", "noteBkgColor": "#FDF4DD", "noteBorderColor": "#C98D12", "noteTextColor": "#17261F", "activationBkgColor": "#DDF5EA", "activationBorderColor": "#067A52", "attributeBackgroundColorOdd": "#FFFFFF", "attributeBackgroundColorEven": "#F2F7F4"}, "layout": "elk", "elk": {"nodePlacementStrategy": "BRANDES_KOEPF", "mergeEdges": false, "cycleBreakingStrategy": "GREEDY"}}}%%
 flowchart LR
-  pwa["SmartPot-Web<br/>PWA"]
-  tg["Telegram"]
-  subgraph borde["Entrada HTTP"]
+  client["SmartPot-Web-React<br/>PWA Client"]
+  subgraph api["SmartPot-API-Java · Spring Boot 4.1 · Java 21"]
     direction TB
-    sec["SecurityConfiguration<br/>CORS · JWT · rutas públicas"]
-    rate["RateLimitingFilter<br/>300/min por IP · 10/min en auth"]
+    web["Spring MVC Controllers<br/>REST Endpoints :8090"]
+    sec["Spring Security + JWT<br/>BCrypt + AES-GCM Device Keys"]
+    mqtt["Spring Integration MQTT<br/>Paho v3 client"]
+    svc["Domain Services Layer<br/>Crops · Readings · Commands · Users"]
   end
-  subgraph dominio["Dominios · controller → service → repository"]
-    direction TB
-    auth["security · users<br/>AuthService · UserService"]
-    crops["crops<br/>CropService · real o virtual<br/>forma · lugar · clave del dispositivo<br/>CropWeatherService"]
-    readings["readings<br/>ReadingService · MeasureRanges"]
-    actuators["actuators · commands<br/>ActuatorService · CommandService<br/>switches · 409 si no cambia nada"]
-    overview["overview<br/>totales · series · flota"]
-    notif["notifications · channels<br/>ChannelDispatcher · TelegramBot<br/>CropChannelService · CropChannelDigest"]
-    virtual["virtualdevices<br/>VirtualDeviceService · SimulatorClient<br/>CropKindBackfill"]
-    ai["ai<br/>AutomationAgent · LearningFeed<br/>InsightService · AiClient"]
-  end
-  subgraph mqtt["mqtt"]
-    direction TB
-    gateway["PahoMqttGateway<br/>MqttMessageHandler · TelemetryParser"]
-    prov["DeviceProvisioner<br/>seguridad dinámica"]
-  end
-  mongo[("MongoDB")]
-  redis[("Redis<br/>CacheStore")]
-  broker["SmartPot-Broker"]
-  aisvc["SmartPot-AI"]
-  sim["SmartPot-DataGenerator"]
-  smtp["SMTP<br/>MailService"]
-  pwa -->|"REST + JWT"| rate --> sec --> dominio
-  tg -->|"webhook firmado o sondeo"| notif
-  notif -->|"Bot API"| tg
-  dominio --> mongo
-  rate & readings & ai --> redis
-  auth --> smtp
-  crops --> prov --> broker
-  gateway <-->|"telemetría · comandos · ACK · estado"| broker
-  gateway --> readings & actuators & crops
-  readings -.->|"ReadingRecordedEvent"| ai
-  ai -->|"POST /v1/insights · /v1/learning"| aisvc
-  ai --> actuators --> gateway
-  virtual -->|"PUT /v1/pots · token"| sim
-  crops -->|"GET /v1/weather · token"| sim
-  sim -->|"MQTT con la cuenta del cultivo"| broker
-  classDef leaf fill:#DDF5EA,stroke:#067A52,color:#17261F
-  classDef water fill:#E3F2FB,stroke:#1F6FA0,color:#17261F
-  classDef sun fill:#FDF4DD,stroke:#C98D12,color:#17261F
-  classDef clay fill:#FBE9E1,stroke:#B85A38,color:#17261F
+  db[("MongoDB 8.0/7.0<br/>SmartPot-DB-Mongo")]
+  cache[("Redis 8<br/>SmartPot-Cache-Redis")]
+  broker["Mosquitto 2.1<br/>SmartPot-Broker-Mosquito"]
+  ai["SmartPot-AI-Python<br/>FastAPI :8000"]
+  client -->|"REST + JWT"| web
+  web --> sec --> svc
+  svc --> db
+  svc --> cache
+  mqtt <--> broker
+  svc <--> mqtt
+  svc -->|"HTTP REST"| ai
   classDef core fill:#067A52,stroke:#0B3D2B,color:#FFFFFF
-  classDef deep fill:#0B3D2B,stroke:#06281C,color:#FFFFFF
-  classDef muted fill:#F2F7F4,stroke:#5B6B63,color:#17261F
-  class pwa,tg,broker,aisvc,sim,smtp water
-  class sec,rate sun
-  class auth,crops,readings,actuators,overview,notif,virtual,ai leaf
-  class gateway,prov core
-  class mongo,redis muted
+  classDef leaf fill:#DDF5EA,stroke:#067A52,color:#17261F
+  class client,api core
+  class web,sec,mqtt,svc leaf
+  class db,cache,broker,ai leaf
 ```
 
-| Paquete                             | Qué contiene                                                                             |
+| Package                             | Description                                                                             |
 |-------------------------------------|------------------------------------------------------------------------------------------|
-| `security`, `users`                 | Filtros, JWT, límite de peticiones, AES-GCM, autenticación y perfil                      |
-| `crops`                             | Cultivos, tipo y forma, modo automático y credenciales del dispositivo                   |
-| `readings`                          | Lecturas, rangos físicos, resumen y exportación                                          |
-| `actuators`, `commands`             | Actuadores de cada cultivo y ciclo de vida de las órdenes                                |
-| `mqtt`                              | Cliente Paho, tópicos v1, parser de telemetría y aprovisionamiento en el broker          |
-| `ai`                                | Cliente de la IA, evaluación, agente de automatización y `LearningFeed`                  |
-| `overview`                          | Panel general: totales, series con `$dateTrunc` y análisis de flota                      |
-| `notifications`, `channels`         | Alertas y canales externos (`NotificationChannel`, hoy Telegram)                         |
-| `virtualdevices`                    | Simulación de los cultivos virtuales, reconciliación y completado de cultivos anteriores |
-| `cache`, `mail`, `health`, `config` | Redis con respaldo en memoria, correo, `/health` y configuración                         |
+| `security`, `users`                 | Security filters, JWT authentication, rate limiting, AES-GCM encryption, user management                      |
+| `crops`                             | Crop domain, immutable kind, system form, automatic mode, and device credentials                   |
+| `readings`                          | Telemetry ingest, physical boundary validation, historical series, CSV export                                          |
+| `actuators`, `commands`             | Crop actuators state machine and command lifecycle management                                |
+| `mqtt`                              | Paho MQTT client, v1 topic routing, telemetry decoder, dynamic broker security provisioning          |
+| `ai`                                | AI client, periodic evaluation, reactive automation agent, and `LearningFeed` queue                  |
+| `overview`                          | Fleet overview: aggregates, `$dateTrunc` time-series metrics, and crop comparator                      |
+| `notifications`, `channels`         | Alert routing and external channels (`NotificationChannel`, Telegram Bot)                         |
+| `virtualdevices`                    | Virtual crop simulation proxy, reconciliation loops, and legacy backfill |
+| `cache`, `mail`, `health`, `config` | Redis cache with in-memory fallback, JavaMail, `/health` endpoint, Spring configuration                         |
 
-## 3. Cultivos reales y virtuales
+## 3. Physical and Virtual Crops
 
-Al crear un cultivo se elige, una sola vez, de dónde vienen sus lecturas. Los dos tipos tienen cuenta en el broker; lo
-que cambia es quién la usa.
+When creating a crop, its origin type is selected once and remains immutable. Both physical and virtual crops have dedicated credentials on the MQTT broker; they differ in who publishes telemetry.
 
-| Regla                | Real                                                 | Virtual                                                            |
+| Policy                | Physical (Real)                                      | Virtual                                                            |
 |----------------------|------------------------------------------------------|--------------------------------------------------------------------|
-| Quién publica        | Un ESP32 con el firmware, físico o simulado en Wokwi | SmartPot-DataGenerator                                             |
-| Credenciales         | Se entregan una vez y se pueden rotar                | No se entregan: la API se las pasa al simulador por la red interna |
-| Actuadores al nacer  | Bomba, luz ultravioleta y ventilador                 | Los seis                                                           |
-| Rutas propias        | `/device` y `/device/key`                            | `/virtual-device` (PUT cambia o reanuda, DELETE pausa)             |
-| Aprendizaje continuo | Sus lecturas entrenan los modelos                    | Sus lecturas no se envían                                          |
-| Límite               | 20 cultivos por cuenta en total                      | Hasta 5 por cuenta                                                 |
+| Telemetry Publisher  | Physical ESP32 or simulated in Wokwi                 | SmartPot-DataGenerator                                             |
+| Credentials          | Displayed once and rotatable                         | Internal: API provisions simulator over docker network |
+| Initial Actuators    | Water pump, UV light, ventilation fan                | All six supported actuators                                                           |
+| Dedicated Endpoints  | `/device` and `/device/key`                          | `/virtual-device` (PUT updates, DELETE pauses)             |
+| Continuous Learning  | Telemetry trains ML models                           | Excluded from continuous learning dataset                                          |
+| Tenant Quota         | Max 20 crops per account                             | Up to 5 virtual crops per account                                                 |
 
-<!-- diagrama: SmartPot_API_01_Crop_Creation | titulo=Crear un cultivo real o virtual -->
-
-```mermaid
-%%{init: {"theme": "base", "fontFamily": "Segoe UI, Arial, sans-serif", "themeVariables": {"fontFamily": "Segoe UI, Arial, sans-serif", "fontSize": "15px", "primaryColor": "#DDF5EA", "primaryTextColor": "#17261F", "primaryBorderColor": "#067A52", "secondaryColor": "#E3F2FB", "secondaryTextColor": "#17261F", "secondaryBorderColor": "#1F6FA0", "tertiaryColor": "#F2F7F4", "tertiaryTextColor": "#17261F", "tertiaryBorderColor": "#D5E3DC", "lineColor": "#5B6B63", "textColor": "#17261F", "mainBkg": "#DDF5EA", "nodeBorder": "#067A52", "clusterBkg": "#F7FAF8", "clusterBorder": "#D5E3DC", "edgeLabelBackground": "#FFFFFF", "actorBkg": "#067A52", "actorBorder": "#0B3D2B", "actorTextColor": "#FFFFFF", "actorLineColor": "#5B6B63", "signalColor": "#17261F", "signalTextColor": "#17261F", "labelBoxBkgColor": "#0B3D2B", "labelBoxBorderColor": "#0B3D2B", "labelTextColor": "#FFFFFF", "loopTextColor": "#0B3D2B", "noteBkgColor": "#FDF4DD", "noteBorderColor": "#C98D12", "noteTextColor": "#17261F", "activationBkgColor": "#DDF5EA", "activationBorderColor": "#067A52", "attributeBackgroundColorOdd": "#FFFFFF", "attributeBackgroundColorEven": "#F2F7F4"}}}%%
-sequenceDiagram
-  autonumber
-  participant W as PWA
-  participant C as CropController
-  participant V as VirtualDeviceService
-  participant S as CropService
-  participant P as DeviceProvisioner
-  participant D as MongoDB
-  participant SIM as Simulador
-  W->>C: POST /api/v1/crops {name, type, kind, form, virtual?}
-  alt kind VIRTUAL
-    C->>V: checkCanCreate (simulador disponible, máximo 5, lugar si es clima)
-  else kind REAL con virtual
-    C-->>W: 400 Solo los cultivos virtuales tienen simulación
-  end
-  C->>S: create(owner, request)
-  S->>D: cuenta los cultivos (máximo 20)
-  S->>S: clave de 24 bytes · AES-256-GCM
-  S->>D: crops (kind, form POT si falta)
-  S->>D: actuators · reales: bomba, luz y ventilador · virtuales: los seis
-  S->>P: provision(cropId, clave)
-  S-)S: DeviceKeyRotatedEvent
-  alt Virtual
-    C->>V: startFor(crop, virtual o AUTO)
-    V->>D: virtual_devices activo
-    V->>SIM: PUT /v1/pots/{cropId} con la clave
-    C-->>W: 201 cultivo sin credenciales
-  else Real
-    C-->>W: 201 cultivo y credenciales (la clave, una sola vez)
-  end
-  Note over W,S: PUT /crops/{id} con otro kind responde 400<br/>y /device o /device/key de un virtual, también
-```
-
-La forma (`POT`, `NFT`, `TOWER`, `RAFT`) solo decide cómo lo dibuja la PWA y se puede editar. Los cultivos creados antes
-de existir el tipo se completan al arrancar con `CropKindBackfill`: los que tenían simulación pasan a virtuales, el
-resto a reales, y sin forma quedan como maceta.
-
-<!-- parte: PARTE II | Funcionamiento -->
-
-## 4. De la lectura a la orden
-
-<!-- diagrama: SmartPot_API_02_Reading_To_Command | titulo=De la lectura a la orden automática | lamina=H -->
+<!-- diagrama: SmartPot_API_01_Crop_Creation | titulo=Crop Creation Flow (Physical vs. Virtual) -->
 
 ```mermaid
 %%{init: {"theme": "base", "fontFamily": "Segoe UI, Arial, sans-serif", "themeVariables": {"fontFamily": "Segoe UI, Arial, sans-serif", "fontSize": "15px", "primaryColor": "#DDF5EA", "primaryTextColor": "#17261F", "primaryBorderColor": "#067A52", "secondaryColor": "#E3F2FB", "secondaryTextColor": "#17261F", "secondaryBorderColor": "#1F6FA0", "tertiaryColor": "#F2F7F4", "tertiaryTextColor": "#17261F", "tertiaryBorderColor": "#D5E3DC", "lineColor": "#5B6B63", "textColor": "#17261F", "mainBkg": "#DDF5EA", "nodeBorder": "#067A52", "clusterBkg": "#F7FAF8", "clusterBorder": "#D5E3DC", "edgeLabelBackground": "#FFFFFF", "actorBkg": "#067A52", "actorBorder": "#0B3D2B", "actorTextColor": "#FFFFFF", "actorLineColor": "#5B6B63", "signalColor": "#17261F", "signalTextColor": "#17261F", "labelBoxBkgColor": "#0B3D2B", "labelBoxBorderColor": "#0B3D2B", "labelTextColor": "#FFFFFF", "loopTextColor": "#0B3D2B", "noteBkgColor": "#FDF4DD", "noteBorderColor": "#C98D12", "noteTextColor": "#17261F", "activationBkgColor": "#DDF5EA", "activationBorderColor": "#067A52", "attributeBackgroundColorOdd": "#FFFFFF", "attributeBackgroundColorEven": "#F2F7F4"}}}%%
 sequenceDiagram
   autonumber
-  participant B as Broker
-  participant H as MqttMessageHandler
-  participant R as ReadingService
-  participant K as Redis
-  participant D as MongoDB
-  participant L as LearningFeed
-  participant G as AutomationAgent
-  participant I as SmartPot-AI
-  participant M as CommandService
-  B->>H: smartpot/v1/{cropId}/telemetry
-  H->>R: TelemetryParser → recordFromDevice
-  R->>K: SET NX reading:cropId (5 s)
-  R->>R: MeasureRanges: fuera del rango físico se descarta
-  R->>D: readings
-  R-)L: ReadingRecordedEvent
-  L->>L: encola solo si el cultivo es real
-  R-)G: ReadingRecordedEvent
-  G->>K: SET NX ai-eval:cropId (30 s con automático, 5 min sin él)
-  G->>I: POST /v1/insights · lectura, historial, actuadores y hora
-  I-->>G: salud, diagnóstico, predicciones y acciones
-  G->>D: crops.health
-  opt Modo automático
-    G->>K: SET NX agent:cropId:actuador (10 min)
-    G->>M: dispatch (origen AGENT)
-    M->>D: commands PENDING → SENT
-    M->>B: smartpot/v1/{cropId}/commands (QoS 1)
-    B->>H: commands/ack EXECUTED o FAILED
-    H->>M: confirma y actualiza el actuador
+  participant U as Grower (PWA Client)
+  participant API as SmartPot-API-Java (Spring Boot)
+  participant DB as MongoDB (Stack A)
+  participant B as Mosquitto Broker
+  U->>API: POST /api/v1/crops {name, type, kind, form}
+  API->>DB: Save crop entity & generate ObjectId
+  alt Real Crop
+    API->>API: Generate secure 32-char device key
+    API->>B: Provision dynamic security user & ACLs
+    API-->>U: 201 Created {crop, deviceKey} (key shown once)
+  else Virtual Crop
+    API->>API: Set default simulation parameters
+    API-->>U: 201 Created {crop}
   end
-  Note over L,I: Cada minuto LearningFeed envía el lote<br/>a POST /v1/learning/readings
 ```
 
-| Regla                     | Valor                                                                                    |
+The system form (`POT`, `NFT`, `TOWER`, `RAFT`) configures visual rendering in the PWA and can be edited anytime. Legacy crops created prior to explicit typing are normalized on startup via `CropKindBackfill`.
+
+<!-- parte: PART II | System Operations & Contracts -->
+
+## 4. Telemetry Ingestion to Command Execution
+
+<!-- diagrama: SmartPot_API_02_Reading_To_Command | titulo=Telemetry to Command Lifecycle | lamina=H -->
+
+```mermaid
+%%{init: {"theme": "base", "fontFamily": "Segoe UI, Arial, sans-serif", "themeVariables": {"fontFamily": "Segoe UI, Arial, sans-serif", "fontSize": "15px", "primaryColor": "#DDF5EA", "primaryTextColor": "#17261F", "primaryBorderColor": "#067A52", "secondaryColor": "#E3F2FB", "secondaryTextColor": "#17261F", "secondaryBorderColor": "#1F6FA0", "tertiaryColor": "#F2F7F4", "tertiaryTextColor": "#17261F", "tertiaryBorderColor": "#D5E3DC", "lineColor": "#5B6B63", "textColor": "#17261F", "mainBkg": "#DDF5EA", "nodeBorder": "#067A52", "clusterBkg": "#F7FAF8", "clusterBorder": "#D5E3DC", "edgeLabelBackground": "#FFFFFF", "actorBkg": "#067A52", "actorBorder": "#0B3D2B", "actorTextColor": "#FFFFFF", "actorLineColor": "#5B6B63", "signalColor": "#17261F", "signalTextColor": "#17261F", "labelBoxBkgColor": "#0B3D2B", "labelBoxBorderColor": "#0B3D2B", "labelTextColor": "#FFFFFF", "loopTextColor": "#0B3D2B", "noteBkgColor": "#FDF4DD", "noteBorderColor": "#C98D12", "noteTextColor": "#17261F", "activationBkgColor": "#DDF5EA", "activationBorderColor": "#067A52", "attributeBackgroundColorOdd": "#FFFFFF", "attributeBackgroundColorEven": "#F2F7F4"}}}%%
+sequenceDiagram
+  autonumber
+  participant D as ESP32 Device
+  participant B as Mosquitto Broker
+  participant API as SmartPot-API-Java
+  participant DB as MongoDB
+  participant AI as SmartPot-AI-Python
+  D->>B: MQTT Publish smartpot/v1/{cropId}/telemetry
+  B->>API: Ingest telemetry message
+  API->>DB: Save Reading document
+  opt Automation Enabled
+    API->>AI: POST /v1/insights (cropId, telemetry)
+    AI-->>API: Health assessment & recommended actions
+    alt Action required & cooldown clear
+      API->>DB: Record new Command (PENDING)
+      API->>B: Publish command QoS 1
+      B->>D: Deliver command
+      D-->>B: Publish commands/ack EXECUTED
+      B-->>API: Ingest command execution ACK
+      API->>DB: Update Command status EXECUTED
+    end
+  end
+```
+
+| Policy                     | Value                                                                                    |
 |---------------------------|------------------------------------------------------------------------------------------|
-| Lecturas por cultivo      | Máximo una cada 5 s; las demás se descartan                                              |
-| Validación                | Cada variable dentro del rango físico del sensor; si no, se descarta la lectura completa |
-| Evaluación                | Como máximo cada 30 s con modo automático y cada 5 min sin él                            |
-| Enfriamiento del agente   | 10 minutos por actuador                                                                  |
-| Vencimiento de un comando | 2 minutos sin ACK → `EXPIRED` y aviso                                                    |
-| Lote de aprendizaje       | Cada minuto, hasta 1000 lecturas por envío; la cola guarda 20 000                        |
+| Crop Telemetry Rate Limit | 1 reading per 5 seconds max; bursts discarded                                              |
+| Sensor Validation         | Every metric within physical sensor bounds; invalid samples discarded |
+| AI Evaluation Cadence      | Max once per 30s in automatic mode, 5min in manual mode                            |
+| Agent Actuator Cooldown   | 10 minutes per actuator                                                                  |
+| Command Expiration        | 2 minutes without ACK → `EXPIRED` status and alert                                                    |
+| Learning Ingest Batch     | Flushed every 60s, up to 1,000 readings per batch; 20,000 capacity                        |
 
-## 5. Seguridad de cada petición
+## 5. Request Security & Authorization Pipeline
 
-<!-- diagrama: SmartPot_API_03_Request_Security | titulo=Qué revisa la API en cada petición -->
+<!-- diagrama: SmartPot_API_03_Request_Security | titulo=Request Security Validation Pipeline -->
 
 ```mermaid
 %%{init: {"theme": "base", "fontFamily": "Segoe UI, Arial, sans-serif", "themeVariables": {"fontFamily": "Segoe UI, Arial, sans-serif", "fontSize": "15px", "primaryColor": "#DDF5EA", "primaryTextColor": "#17261F", "primaryBorderColor": "#067A52", "secondaryColor": "#E3F2FB", "secondaryTextColor": "#17261F", "secondaryBorderColor": "#1F6FA0", "tertiaryColor": "#F2F7F4", "tertiaryTextColor": "#17261F", "tertiaryBorderColor": "#D5E3DC", "lineColor": "#5B6B63", "textColor": "#17261F", "mainBkg": "#DDF5EA", "nodeBorder": "#067A52", "clusterBkg": "#F7FAF8", "clusterBorder": "#D5E3DC", "edgeLabelBackground": "#FFFFFF", "actorBkg": "#067A52", "actorBorder": "#0B3D2B", "actorTextColor": "#FFFFFF", "actorLineColor": "#5B6B63", "signalColor": "#17261F", "signalTextColor": "#17261F", "labelBoxBkgColor": "#0B3D2B", "labelBoxBorderColor": "#0B3D2B", "labelTextColor": "#FFFFFF", "loopTextColor": "#0B3D2B", "noteBkgColor": "#FDF4DD", "noteBorderColor": "#C98D12", "noteTextColor": "#17261F", "activationBkgColor": "#DDF5EA", "activationBorderColor": "#067A52", "attributeBackgroundColorOdd": "#FFFFFF", "attributeBackgroundColorEven": "#F2F7F4"}}}%%
 flowchart TB
-  req(["Petición HTTP"]) --> cors{"¿Origen permitido?<br/>CORS_ALLOWED_ORIGINS"}
-  cors -->|"No"| r403["403"]
-  cors -->|"Sí"| rate{"¿Dentro del límite?<br/>300/min por IP · 10/min en /auth"}
-  rate -->|"No"| r429["429 con Retry-After"]
-  rate -->|"Sí"| pub{"¿Ruta pública?<br/>/health · /auth · /crop-profiles · webhook"}
-  pub -->|"Sí"| ctrl["Controlador"]
-  pub -->|"No"| jwt{"¿JWT válido?<br/>HS256 · 7 días"}
-  jwt -->|"No"| r401["401"]
-  jwt -->|"Sí"| ctrl
-  ctrl --> valid{"¿Datos válidos?<br/>Bean Validation"}
-  valid -->|"No"| r400["400 con fields en español"]
-  valid -->|"Sí"| owner{"¿El cultivo es suyo?<br/>CropService.getOwned"}
-  owner -->|"No o no existe"| r404["404: no revela qué ids existen"]
-  owner -->|"Sí"| kind{"¿La ruta aplica a su tipo?<br/>device solo reales · virtual-device solo virtuales"}
-  kind -->|"No"| r400b["400 con el motivo"]
-  kind -->|"Sí"| ok(["Servicio y respuesta JSON"])
-  classDef leaf fill:#DDF5EA,stroke:#067A52,color:#17261F
-  classDef water fill:#E3F2FB,stroke:#1F6FA0,color:#17261F
-  classDef sun fill:#FDF4DD,stroke:#C98D12,color:#17261F
-  classDef clay fill:#FBE9E1,stroke:#B85A38,color:#17261F
+  req(["Incoming HTTP Request"]) --> rate{"Rate Limiter (Redis)<br/>300/min per IP · 10/min /auth"}
+  rate -->|"Exceeded"| r429(["429 Too Many Requests"])
+  rate -->|"Allowed"| auth{"Authentication Guard"}
+  auth -->|"Public route"| handler["Execute Controller Handler"]
+  auth -->|"Protected route"| jwt{"Validate JWT Bearer Token"}
+  jwt -->|"Invalid or Expired"| r401(["401 Unauthorized"])
+  jwt -->|"Valid"| owner{"Check Crop Ownership"}
+  owner -->|"Not owned"| r404(["404 Not Found (Prevent ID Enumeration)"])
+  owner -->|"Owned"| handler
   classDef core fill:#067A52,stroke:#0B3D2B,color:#FFFFFF
-  classDef deep fill:#0B3D2B,stroke:#06281C,color:#FFFFFF
-  classDef muted fill:#F2F7F4,stroke:#5B6B63,color:#17261F
-  class req,ok core
-  class cors,rate,pub,jwt,valid,owner,kind sun
-  class r403,r429,r401,r400,r404,r400b clay
-  class ctrl leaf
+  classDef leaf fill:#DDF5EA,stroke:#067A52,color:#17261F
+  classDef clay fill:#FBE9E1,stroke:#B85A38,color:#17261F
+  class req,handler core
+  class rate,auth,jwt,owner leaf
+  class r429,r401,r404 clay
 ```
 
-| Control                    | Detalle                                                                                  |
+| Security Control           | Implementation Details                                                                                  |
 |----------------------------|------------------------------------------------------------------------------------------|
-| Contraseñas                | 8 caracteres a 72 bytes con mayúscula, minúscula y número; BCrypt de costo 12            |
-| Recuperación               | Responde 202 aunque el correo no exista; token de 30 minutos guardado como SHA-256       |
-| Claves de los dispositivos | 24 bytes aleatorios, cifrados con AES-256-GCM; la llave es `SMARTPOT_AES_KEY`            |
-| Servicios internos         | La IA y el simulador se llaman con token de servicio por la red interna                  |
-| Telegram                   | Webhook con secreto comparado en tiempo constante; códigos de vinculación de un solo uso |
+| Passwords                  | 8 chars to 72 bytes max (upper, lower, digits); BCrypt cost factor 12            |
+| Password Recovery          | Returns 202 Accepted on non-existent email; 30-min token stored as SHA-256       |
+| Device Credentials         | 24 cryptographically random bytes, encrypted with AES-256-GCM via `SMARTPOT_AES_KEY`            |
+| Internal Services          | AI engine and data generator queried with bearer service token over docker network                  |
+| Telegram Bot Integration   | Webhook with constant-time token comparison; single-use 10-minute linking codes |
 
-## 6. Contrato
+## 6. API and MQTT Contracts
 
-La documentación interactiva vive en `/docs` y el esquema en `/v3/api-docs`; el [README](../README.md#contrato-rest)
-resume todas las rutas y
-la [documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md)
-detalla el contrato MQTT v1.
+Interactive OpenAPI documentation is hosted at `/docs` with raw JSON schema at `/v3/api-docs`. The repository [README](../README.md) details REST endpoints, while the [Platform Technical Documentation](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) details the MQTT v1 protocol.
 
-| Grupo             | Rutas                                                                                            |
+| Route Group       | Endpoints                                                                                            |
 |-------------------|--------------------------------------------------------------------------------------------------|
-| Público           | `/health`, `/api/v1/auth/*`, `/api/v1/crop-profiles`                                             |
-| Cultivos          | `/api/v1/crops`, `/crops/{id}`, `/crops/automation`, `/crops/{id}/device`, `/crops/{id}/weather` |
-| Datos del cultivo | `/readings`, `/actuators`, `/commands`, `/insights`, `/virtual-device`, `/channels`              |
-| Cuenta            | `/api/v1/users/me`, `/notifications`, `/channels`, `/overview`, `/commands`, `/ai/learning`      |
+| Public            | `/health`, `/api/v1/auth/*`, `/api/v1/crop-profiles`                                             |
+| Crops             | `/api/v1/crops`, `/crops/{id}`, `/crops/automation`, `/crops/{id}/device`, `/crops/{id}/weather` |
+| Crop Telemetry    | `/readings`, `/actuators`, `/commands`, `/insights`, `/virtual-device`, `/channels`              |
+| Account & Fleet   | `/api/v1/users/me`, `/notifications`, `/channels`, `/overview`, `/commands`, `/ai/learning`      |
 
-<!-- parte: PARTE III | Operación -->
+<!-- parte: PART III | Operations & Verification -->
 
-## 7. Configuración
+## 7. Configuration & Environment
 
-La API lee `.env` desde la carpeta del proyecto; `.env.example` lista todas las variables.
+The API loads `.env` on startup; all supported variables are declared in `.env.example`.
 
-| Grupo     | Variables                                                                                                              |
+| Config Category | Environment Variables                                                                                                              |
 |-----------|------------------------------------------------------------------------------------------------------------------------|
-| Servidor  | `PORT`, `LOG_LEVEL`, `WEB_BASE_URL`, `PUBLIC_API_URL`, `CORS_ALLOWED_ORIGINS`, `API_DOCS_ENABLED`                      |
-| Secretos  | `SMARTPOT_JWT_SECRET` (32 caracteres o más), `SMARTPOT_AES_KEY` (AES-256 en Base64), `JWT_EXPIRATION`                  |
-| Datos     | `MONGODB_URI`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`                                                            |
-| Correo    | `MAIL_ENABLED`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`                                |
+| Server          | `PORT`, `LOG_LEVEL`, `WEB_BASE_URL`, `PUBLIC_API_URL`, `CORS_ALLOWED_ORIGINS`, `API_DOCS_ENABLED`                      |
+| Secrets         | `SMARTPOT_JWT_SECRET` (32 caracteres o más), `SMARTPOT_AES_KEY` (AES-256 en Base64), `JWT_EXPIRATION`                  |
+| Data Stores     | `MONGODB_URI`, `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD`                                                            |
+| Mail Service    | `MAIL_ENABLED`, `MAIL_HOST`, `MAIL_PORT`, `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM`                                |
 | MQTT      | `MQTT_ENABLED`, `MQTT_BROKER_URI`, `MQTT_ADMIN_USERNAME`, `MQTT_ADMIN_PASSWORD`, `MQTT_PUBLIC_*`, `MQTT_WEBSOCKET_URL` |
-| IA        | `AI_ENABLED`, `AI_BASE_URL`, `SMARTPOT_AI_TOKEN`, `AI_EVALUATION_INTERVAL`, `AI_AUTOMATION_COOLDOWN`, `AI_LEARNING_*`  |
+| AI Engine       | `AI_ENABLED`, `AI_BASE_URL`, `SMARTPOT_AI_TOKEN`, `AI_EVALUATION_INTERVAL`, `AI_AUTOMATION_COOLDOWN`, `AI_LEARNING_*`  |
 | Telegram  | `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_MODE` (`polling` o `webhook`), `TELEGRAM_WEBHOOK_SECRET`      |
-| Simulador | `SIMULATOR_ENABLED`, `SIMULATOR_BASE_URL`, `SIMULATOR_TOKEN` (sin él no se crean cultivos virtuales)                   |
+| Simulator       | `SIMULATOR_ENABLED`, `SIMULATOR_BASE_URL`, `SIMULATOR_TOKEN` (sin él no se crean cultivos virtuales)                   |
 
 > [!WARNING]
-> **Llave AES.** Si `SMARTPOT_AES_KEY` se pierde o cambia, las cuentas MQTT no se pueden reconstruir: cada dueño debe
-> rotar la clave de sus cultivos reales.
+> **AES Key Persistence.** If `SMARTPOT_AES_KEY` is lost or modified, stored MQTT device credentials cannot be decrypted: growers must rotate credentials for all physical crops.
 
-## 8. Pruebas
+## 8. Automated Testing Suite
 
-`./mvnw verify` corre 147 pruebas con JUnit y Mockito: cifrado, JWT, contraseñas, tópicos y telemetría MQTT,
-aprovisionamiento, comandos y switches, cultivos con su tipo fijo, su forma, su lugar y su clima, los avisos por
-cultivo, el agente, el envío de lecturas para el aprendizaje (
-solo reales), canales y bot de Telegram, la simulación de los virtuales (dueño, clave, límites, pausa y reconciliación),
-el completado de cultivos anteriores, la caché con respaldo local y la cadena de seguridad de los controladores. El E2E
-central de `.github` recorre la API completa con 46 comprobaciones.
+`./mvnw verify` executes 147 automated unit and integration tests via JUnit 5 and Mockito: cryptography, JWT validation, password constraints, MQTT v1 routing and telemetry parsing, broker provisioning, actuator switches, crop immutable typing, weather integrations, per-crop notifications, reactive agent logic, continuous learning ingest, Telegram bot webhooks, simulation proxy, legacy backfill, Redis cache fallbacks, and security filters. The centralized E2E suite in `.github/docker/demo/test.py` validates 46 end-to-end assertions.
 
-## 9. Operación
+## 9. Deployment and Production Operations
 
-| Tarea           | Cómo                                                                                                                                 |
+| Operational Task | Procedure                                                                                                                                 |
 |-----------------|--------------------------------------------------------------------------------------------------------------------------------------|
-| Estado          | `GET /health` → base, broker, caché, IA y simulador (503 si la base cae)                                                             |
-| Logs            | `docker logs -f smartpot-api`                                                                                                        |
-| Imagen          | `ghcr.io/smartpottech/smartpot-api`: compila en una etapa aparte, usuario `1000`, solo lectura con `tmpfs` en `/tmp` y `HEALTHCHECK` |
-| Despliegue      | Cada cambio en `main` pasa por el CI, publica la imagen y pide el despliegue central de `.github`                                    |
-| Rotar una clave | Pestaña Dispositivo de la PWA o `POST /api/v1/crops/{id}/device/key` (solo reales)                                                   |
+| Health Check     | `GET /health` → database, broker, cache, AI engine, and simulator (503 on database outage)                                                             |
+| Log Inspection   | `docker logs -f smartpot-api`                                                                                                        |
+| Container Image  | `ghcr.io/smartpottech/smartpot-api`: multi-stage build, non-root user `1000`, read-only rootfs with `/tmp` tmpfs, and Docker `HEALTHCHECK` |
+| CI/CD Pipeline   | Every commit to `main` executes CI workflows, builds and signs container images on GHCR                                    |
+| Key Rotation     | Device tab in PWA or `POST /api/v1/crops/{id}/device/key` (physical crops only)                                                   |

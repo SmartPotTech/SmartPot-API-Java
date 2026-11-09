@@ -1,38 +1,27 @@
-# SmartPot-API-Java (Deprecated / Deprecado)
+# SmartPot-API-Java (Legacy Stack A Reference)
 
 > [!WARNING]
-> **Deprecated / Deprecado (Legacy Stack A)**  
-> **English:** This repository contains the legacy Stack A (v1.0) REST API and MQTT bridge implemented in Java 21 and Spring Boot 4.1. It has been **deprecated and superseded in production** by the canonical modern Stack B API: [**`SmartPot-API`**](https://github.com/SmartPotTech/SmartPot-API) (Go 1.26 + Echo). This repository is preserved solely for historical reference and software archaeology.  
-> **Español:** Este repositorio contiene la implementación legada del Stack A (v1.0) de la API REST y puente MQTT desarrollada en Java 21 y Spring Boot 4.1. Ha sido **deprecada y sustituida en producción** por la API canónica moderna del Stack B: [**`SmartPot-API`**](https://github.com/SmartPotTech/SmartPot-API) (Go 1.26 + Echo). Este repositorio se conserva exclusivamente como referencia histórica y arqueología de software.
+> **Deprecated (Legacy Stack A Reference Implementation)**  
+> This repository contains the legacy Stack A (v1.0) REST API and MQTT bridge implemented in Java 21 and Spring Boot 4.1. It has been **deprecated and superseded in production** by the canonical modern Stack B API: [**`SmartPot-API`**](https://github.com/SmartPotTech/SmartPot-API) (Go 1.27.3 + Echo v4.16.3 + pgx v5.12.0). This repository is preserved solely for historical reference and academic archaeology.
 
-## Estado del Proyecto
+## Project Status
 
 [![Java CI with Maven](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/maven.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/maven.yml)
 [![CodeQL Advanced](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/codeql.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/codeql.yml)
 [![Publish Docker Images](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/packaging.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-API-Java/actions/workflows/packaging.yml)
 
-## Descripción
+## Description
 
-SmartPot-API es el núcleo de **SmartPot**: una API REST en **Spring Boot 4.1** y **Java 21** que conecta los cultivos
-hidropónicos, reales o virtuales, con la aplicación web. Recibe la telemetría por **MQTT**, la guarda en **MongoDB**,
-envía comandos a los actuadores, administra las credenciales de cada dispositivo en el broker y consulta al **asistente
-de IA** para diagnosticar cada cultivo y, si el usuario lo permite, actuar por su cuenta.
+SmartPot-API is the legacy core of **SmartPot**: a REST API built with **Spring Boot 4.1** and **Java 21** that connected physical and virtual hydroponic crops with the web application. It ingested telemetry via **MQTT**, persisted documents in **MongoDB**, dispatched actuation commands, provisioned broker credentials, and queried the **AI assistant** for agronomic diagnostics and automated actuation.
 
 ```mermaid
 flowchart LR
-  web["SmartPot-Web<br/>PWA"] -->|"REST + JWT"| api["SmartPot-API<br/>:8091"]
-  esp["Cultivo real<br/>ESP32 o Wokwi"] -->|"MQTT"| broker["SmartPot-Broker"]
-  broker <-->|"telemetría · comandos · ACK"| api
-  api --> db[("MongoDB")]
-  api --> cache[("Redis")]
-  api --> mail["Mailpit / SMTP"]
-  api -->|"evaluación · lecturas para aprender"| ai["SmartPot-AI"]
-  api -->|"cultivos virtuales y clima"| sim["SmartPot-DataGenerator"]
-  sim -->|"MQTT"| broker
-  api -->|"avisos y resúmenes"| tg["Telegram"]
+  web["SmartPot-Web-React<br/>PWA Client"] -->|"REST + JWT"| api["SmartPot-API-Java<br/>:8090"]
+  esp["Physical Crop<br/>ESP32 or Wokwi"] -->|"MQTT TLS"| broker["SmartPot-Broker-Mosquito"]
+  broker <-->|"telemetry · commands · ACK"| api
 ```
 
-## Estructura del Proyecto
+## Project Structure
 
 Cada dominio sigue la misma organización por capas: `controller`, `service`, `repository`, `mapper` y `model` (`dto` y
 `entity`).
@@ -215,7 +204,7 @@ Abre http://localhost:5173 e ingresa con `demo@smartpot.app` / `SmartPot2026`. S
 `docker compose -p smartpot-demo down` (con `-v` borra también los datos). Más detalle en la
 [demo](https://github.com/SmartPotTech/.github/tree/main/docker/demo).
 
-### Requisitos Previos
+### Prerequisites
 
 - Java 21 y Maven 3.9 (o solo Docker)
 - MongoDB, Redis, Mailpit, el broker y el servicio de IA: el entorno completo está
@@ -231,7 +220,7 @@ cp .env.example .env    # completa secretos y conexiones
 La API lee `.env` desde la carpeta del proyecto (`spring.config.import`). `SMARTPOT_JWT_SECRET` y `SMARTPOT_AES_KEY` no
 tienen valor por defecto: sin ellos la API no arranca.
 
-### Pruebas
+### Testing
 
 ```bash
 ./mvnw verify
@@ -288,6 +277,6 @@ Los diagramas generales muestran la plataforma completa en una sola imagen ampli
 - [Recorrido de la PWA](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_07_User_Journey.svg):
   qué rutas llama cada pantalla de la PWA y qué servicio responde
 
-## Licencia
+## License
 
 Este proyecto está bajo la licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
